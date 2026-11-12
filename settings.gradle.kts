@@ -24,4 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "CertBridge"
 include(":app")
- 
+include(":keychain-probe")
