@@ -18,10 +18,44 @@ Installing the APK alone does not grant this capability.
 ## Build and tests
 
 ```sh
-./gradlew :app:assembleDebug :app:testDebugUnitTest
+./gradlew :app:assembleDebug :app:testDebugUnitTest :keychain-probe:assembleDebug
 ```
 
-No physical-device, MDM-policy, or VPN integration test has been completed.
+The `keychain-probe` module is a **separate test-only Android application**,
+not a component of the CertBridge APK. It uses a button to invoke
+`KeyChain.choosePrivateKeyAlias()` with a reserved `.invalid` URI, without any
+network request, credential access, or alias logging.
+
+### Emulator callback smoke test
+
+Only use a disposable Android Enterprise emulator with a trusted test DPC
+already configured as Device Owner. Grant **Choose private key** (and no other
+delegation scopes) to `com.example.certbridge`.
+
+```sh
+adb -s emulator-5554 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5554 install -r keychain-probe/build/outputs/apk/debug/keychain-probe-debug.apk
+adb -s emulator-5554 shell am start -n com.example.certbridge.probe/.ProbeActivity
+```
+
+Tap **Request certificate alias** in the Probe app, then inspect the CertBridge
+receiver log:
+
+```sh
+adb -s emulator-5554 logcat -d -s CertBridge:I
+```
+
+Expected evidence, if the DPC delegation and Android broadcast are working:
+
+```text
+Certificate selection callback received; mode=observe-only; fallback=system-picker
+```
+
+The ordinary system KeyChain picker may appear, and with no test certificates
+installed it may have nothing to choose. **Do not install a production
+certificate to make this test pass.** The probe does not verify any Cisco or VPN
+integration. No physical-device, MDM-policy, or VPN integration test has been
+completed.
 
 ## Before enabling automatic selection
 
